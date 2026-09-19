@@ -6,8 +6,8 @@ on:
     tags-ignore: ['**']
   pull_request:
 
-# The default branch of this repository is not called main, so pushes are
-# watched on every branch. Runs on a superseded commit are cancelled.
+# Pushes are watched on every branch, so work that is not on the default
+# branch is covered too. Runs on a superseded commit are cancelled.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
