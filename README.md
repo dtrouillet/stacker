@@ -47,10 +47,14 @@ Ou ouvrez simplement le dossier dans Android Studio.
 | | |
 |---|---|
 | minSdk | 26 (Android 8.0) |
-| targetSdk / compileSdk | 35 |
-| Plugin Android Gradle | 8.7.3 |
-| Kotlin | 2.0.21 |
-| Gradle | 8.11.1 |
+| targetSdk | 36 |
+| compileSdk | 37 |
+| Plugin Android Gradle | 9.4.1 |
+| Gradle | 9.7.1 |
+| Kotlin | fourni par le plugin Android |
+
+Depuis le plugin Android 9, Kotlin est intégré: le projet ne déclare plus le
+plugin `org.jetbrains.kotlin.android`, et la cible JVM suit `compileOptions`.
 
 ## Intégration continue et publication
 
