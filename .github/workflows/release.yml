@@ -1,0 +1,205 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, for example 1.2.3'
+        required: true
+        type: string
+      distribute:
+        description: 'Send the build to the Firebase testers'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build, sign and distribute
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify the Gradle wrapper checksum
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve the version
+        id: version
+        env:
+          # Read through the environment, never interpolated into the script,
+          # so a crafted tag or input cannot inject shell.
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::'$version' is not a MAJOR.MINOR.PATCH version. Tag releases as v1.2.3."
+            exit 1
+          fi
+          major="${version%%.*}"
+          rest="${version#*.}"
+          minor="${rest%%.*}"
+          patch="${rest#*.}"
+          # Monotonic as long as minor and patch stay below 100, which the
+          # regexp above does not enforce, so guard it here.
+          if [ "$minor" -gt 99 ] || [ "$patch" -gt 99 ]; then
+            echo "::error::minor and patch must stay below 100 to keep versionCode monotonic."
+            exit 1
+          fi
+          code=$((major * 10000 + minor * 100 + patch))
+          echo "name=$version" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Building $version (versionCode $code)"
+
+      - name: Check the signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=""
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            eval "value=\${$name:-}"
+            [ -n "$value" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing. See docs/RELEASING.md."
+            exit 1
+          fi
+
+      - name: Decode the upload keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          test -s "$RUNNER_TEMP/upload.jks"
+
+      - name: Run the unit tests
+        run: ./gradlew --no-daemon testReleaseUnitTest
+
+      - name: Build the signed APK and app bundle
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/upload.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ./gradlew --no-daemon assembleRelease bundleRelease \
+            -PversionName=${{ steps.version.outputs.name }} \
+            -PversionCode=${{ steps.version.outputs.code }}
+
+      - name: Name the artefacts after the version
+        id: artefacts
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/stacker-$VERSION.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "dist/stacker-$VERSION.aab"
+          echo "apk=dist/stacker-$VERSION.apk" >> "$GITHUB_OUTPUT"
+          echo "aab=dist/stacker-$VERSION.aab" >> "$GITHUB_OUTPUT"
+
+      - name: Confirm the APK really is signed
+        run: |
+          set -euo pipefail
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$apksigner" verify --verbose "${{ steps.artefacts.outputs.apk }}"
+
+      - name: Publish the signed packages as a build artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stacker-release-${{ steps.version.outputs.name }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Keep the deobfuscation mapping
+        uses: actions/upload-artifact@v4
+        with:
+          # Kept out of the public release: it is only needed to read crash
+          # reports back, and it describes the shipped code.
+          name: mapping-${{ steps.version.outputs.name }}
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Publish the GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Stacker $VERSION" \
+            --generate-notes \
+            --verify-tag \
+            "${{ steps.artefacts.outputs.apk }}#Stacker $VERSION (APK)" \
+            "${{ steps.artefacts.outputs.aab }}#Stacker $VERSION (app bundle)"
+
+      - name: Decide whether the testers get this build
+        id: firebase
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          REQUESTED: ${{ github.event_name != 'workflow_dispatch' || inputs.distribute }}
+        run: |
+          set -euo pipefail
+          if [ -n "${FIREBASE_APP_ID:-}" ] && [ -n "${FIREBASE_SERVICE_ACCOUNT:-}" ] && [ "$REQUESTED" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Firebase App Distribution is not configured or was not requested, skipping."
+          fi
+
+      - name: Send the APK to the Firebase testers
+        if: steps.firebase.outputs.enabled == 'true'
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_GROUPS: ${{ vars.FIREBASE_GROUPS }}
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase.json"
+          printf 'Stacker %s\n\n%s\n' "$VERSION" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" \
+            > "$RUNNER_TEMP/notes.txt"
+          npx --yes firebase-tools appdistribution:distribute \
+            "${{ steps.artefacts.outputs.apk }}" \
+            --app "$FIREBASE_APP_ID" \
+            --release-notes-file "$RUNNER_TEMP/notes.txt" \
+            ${FIREBASE_GROUPS:+--groups "$FIREBASE_GROUPS"}
+
+      - name: Shred the secrets from the runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks" "$RUNNER_TEMP/firebase.json"

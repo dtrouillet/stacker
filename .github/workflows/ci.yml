@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['**']
+  pull_request:
+
+# The default branch of this repository is not called main, so pushes are
+# watched on every branch. Runs on a superseded commit are cancelled.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test and package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Verify the Gradle wrapper checksum
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run the unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest testReleaseUnitTest
+
+      - name: Run Android Lint
+        if: always()
+        run: ./gradlew --no-daemon lintDebug
+
+      - name: Assemble the debug APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Assemble the release APK
+        # Unsigned here: it proves R8 shrinking and resource shrinking still
+        # produce a package, without needing the signing secrets.
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Publish the debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: stacker-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish the test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish the lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-*.*
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Send the lint findings to code scanning
+        if: always()
+        # Code scanning must be enabled on the repository, and a pull request
+        # from a fork gets a read-only token. Neither should turn the run red.
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: app/build/reports/lint-results-debug.sarif
+          category: android-lint

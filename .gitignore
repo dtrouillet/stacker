@@ -9,3 +9,8 @@ captures/
 .cxx/
 *.apk
 *.aab
+
+# Signing material, never commit these.
+keystore.properties
+*.jks
+*.keystore

@@ -1,5 +1,7 @@
 # Stacker
 
+[![CI](https://github.com/dtrouillet/stacker/actions/workflows/ci.yml/badge.svg)](https://github.com/dtrouillet/stacker/actions/workflows/ci.yml)
+
 Un jeu Android natif qui reprend le principe de *Stack* : des plaques glissent
 au-dessus de la tour, vous touchez l'écran pour les poser, et tout ce qui
 dépasse est tranché et tombe. Plus la tour monte, plus les plaques rétrécissent
@@ -49,6 +51,29 @@ Ou ouvrez simplement le dossier dans Android Studio.
 | Plugin Android Gradle | 8.7.3 |
 | Kotlin | 2.0.21 |
 | Gradle | 8.11.1 |
+
+## Intégration continue et publication
+
+Deux workflows GitHub Actions couvrent la chaîne complète.
+
+`CI` tourne sur chaque push et chaque pull request : il vérifie l'empreinte du
+wrapper Gradle, lance les tests unitaires des deux variantes, passe Android
+Lint, puis construit l'APK debug et l'APK release non signé, ce dernier pour
+prouver que R8 produit encore un paquet. L'APK debug, les rapports de tests et
+le rapport de lint sont publiés comme artefacts du run, et les findings de lint
+remontent dans l'onglet code scanning quand il est activé.
+
+`Release` se déclenche sur un tag `v*`, ou à la main depuis l'onglet Actions. Il
+construit l'APK et l'app bundle signés, vérifie la signature avec `apksigner`,
+crée la release GitHub avec les deux fichiers attachés, et envoie l'APK aux
+testeurs Firebase App Distribution si les secrets correspondants existent. Le
+`mapping.txt` de R8 reste un artefact privé du run.
+
+Le numéro de version vient du tag : `v1.2.3` donne le `versionName` `1.2.3` et
+le `versionCode` `10203`.
+
+La marche à suivre complète, de la création de la clé de signature aux secrets à
+déclarer, est dans [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Organisation du code
 
