@@ -61,12 +61,14 @@ jobs:
             echo "::error::'$version' is not a MAJOR.MINOR.PATCH version. Tag releases as v1.2.3."
             exit 1
           fi
-          major="${version%%.*}"
+          # Forced to base 10: a zero padded field such as 1.08.3 passes the
+          # regexp above but would otherwise be read as octal and abort.
+          major=$((10#${version%%.*}))
           rest="${version#*.}"
-          minor="${rest%%.*}"
-          patch="${rest#*.}"
-          # Monotonic as long as minor and patch stay below 100, which the
-          # regexp above does not enforce, so guard it here.
+          minor=$((10#${rest%%.*}))
+          patch=$((10#${rest#*.}))
+          # versionCode only stays monotonic while minor and patch are below
+          # 100, which the regexp does not enforce, so guard it here.
           if [ "$minor" -gt 99 ] || [ "$patch" -gt 99 ]; then
             echo "::error::minor and patch must stay below 100 to keep versionCode monotonic."
             exit 1
@@ -132,6 +134,10 @@ jobs:
         run: |
           set -euo pipefail
           apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          if [ -z "$apksigner" ]; then
+            echo "::error::apksigner was not found under $ANDROID_HOME/build-tools."
+            exit 1
+          fi
           "$apksigner" verify --verbose "${{ steps.artefacts.outputs.apk }}"
 
       - name: Publish the signed packages as a build artefact
