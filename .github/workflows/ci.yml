@@ -41,7 +41,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Run the unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest testReleaseUnitTest
+        run: ./gradlew --no-daemon test
 
       - name: Run Android Lint
         if: always()

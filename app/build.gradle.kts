@@ -27,7 +27,7 @@ val canSignRelease = releaseStoreFile != null && releaseStorePassword != null &&
 
 android {
     namespace = "fr.damientrouillet.stacker"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "fr.damientrouillet.stacker"
@@ -78,7 +78,6 @@ android {
         warningsAsErrors = false
         htmlReport = true
         xmlReport = true
-        sarifReport = true
     }
 
     compileOptions {
