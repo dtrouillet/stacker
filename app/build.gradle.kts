@@ -71,10 +71,10 @@ android {
     }
 
     lint {
-        // Lint has its own continuous integration step that publishes the
-        // report, so it does not gate packaging. Flip abortOnError back on once
-        // the report is clean.
-        abortOnError = false
+        // The report came back clean on a machine with the Android SDK, so lint
+        // errors now fail the build. Release packaging is not gated separately:
+        // the explicit lint step in continuous integration is the single gate.
+        abortOnError = true
         checkReleaseBuilds = false
         warningsAsErrors = false
         htmlReport = true

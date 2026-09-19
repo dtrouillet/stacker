@@ -88,7 +88,7 @@ jobs:
         # Code scanning must be enabled on the repository, and a pull request
         # from a fork gets a read-only token. Neither should turn the run red.
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: app/build/reports/lint-results-debug.sarif
           category: android-lint
