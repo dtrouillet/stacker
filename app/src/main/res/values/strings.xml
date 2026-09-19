@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Stacker</string>
-    <string name="title">STACK</string>
+    <!-- The app name and the title on the start screen are the game's own
+         wordmark, so they read the same in every language. -->
+    <string name="app_name" translatable="false">Stacker</string>
+    <string name="title" translatable="false">STACK</string>
+
     <string name="tap_to_start">TAP TO START</string>
     <string name="game_over">GAME OVER</string>
     <string name="best">BEST</string>
