@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Stacker</string>
+    <string name="title">STACK</string>
+    <string name="tap_to_start">TAP TO START</string>
+    <string name="game_over">GAME OVER</string>
+    <string name="best">BEST</string>
+    <string name="tap_to_retry">TAP TO PLAY AGAIN</string>
+</resources>
