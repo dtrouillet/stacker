@@ -135,7 +135,7 @@ jobs:
           "$apksigner" verify --verbose "${{ steps.artefacts.outputs.apk }}"
 
       - name: Publish the signed packages as a build artefact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: stacker-release-${{ steps.version.outputs.name }}
           path: dist/
@@ -143,7 +143,7 @@ jobs:
           retention-days: 90
 
       - name: Keep the deobfuscation mapping
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           # Kept out of the public release: it is only needed to read crash
           # reports back, and it describes the shipped code.
