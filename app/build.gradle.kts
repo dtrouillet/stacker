@@ -29,12 +29,12 @@ val canSignRelease = releaseStoreFile != null && releaseStorePassword != null &&
 
 android {
     namespace = "fr.damientrouillet.stacker"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "fr.damientrouillet.stacker"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         // Overridden by the release workflow with -PversionName / -PversionCode.
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
         versionName = (project.findProperty("versionName") as String?) ?: "1.0.0"
