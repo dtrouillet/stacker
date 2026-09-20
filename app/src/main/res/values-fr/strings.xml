@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="tap_to_start">TOUCHEZ POUR JOUER</string>
+    <string name="play">JOUER</string>
+    <string name="settings">PARAMÈTRES</string>
+    <string name="leaderboard">CLASSEMENT</string>
+    <string name="back">RETOUR</string>
+    <string name="menu">MENU</string>
+
+    <string name="sound">SON</string>
+    <string name="on">ACTIVÉ</string>
+    <string name="off">COUPÉ</string>
+    <string name="plate_size">TAILLE DE PLAQUE</string>
+    <string name="no_scores">AUCUN SCORE</string>
+
     <string name="game_over">PERDU</string>
     <string name="best">RECORD</string>
     <string name="tap_to_retry">TOUCHEZ POUR REJOUER</string>

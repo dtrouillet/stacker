@@ -31,6 +31,9 @@ class GameRenderer(context: Context) {
 
     private companion object {
         const val CULL_MARGIN = 220f
+
+        /** Seconds the game over panel takes to fade in. */
+        const val GAME_OVER_FADE = 0.45f
     }
 
     /** Top window inset, so the score clears a display cutout. */
@@ -56,8 +59,6 @@ class GameRenderer(context: Context) {
     private var gradientIndex = Int.MIN_VALUE
     private var gradientHeight = -1f
 
-    private val labelTitle = context.getString(R.string.title)
-    private val labelStart = context.getString(R.string.tap_to_start)
     private val labelGameOver = context.getString(R.string.game_over)
     private val labelBest = context.getString(R.string.best)
     private val labelRetry = context.getString(R.string.tap_to_retry)
@@ -76,14 +77,28 @@ class GameRenderer(context: Context) {
 
         drawBackground(canvas, game)
         drawScene(canvas, game)
-        drawHud(canvas, game)
     }
+
+    /**
+     * The in-game overlay. Menu pages draw their own, so nothing is painted
+     * here while the tower is only a backdrop.
+     */
+    fun drawHud(canvas: Canvas, game: StackGame) {
+        when (game.state) {
+            GameState.RUNNING -> drawScore(canvas, game)
+            GameState.OVER -> drawGameOver(canvas, game)
+            GameState.READY -> Unit
+        }
+    }
+
+    /** How far the game over panel has faded in, from 0 to 1. */
+    fun gameOverFade(game: StackGame): Float = min(1f, game.timeSinceGameOver() / GAME_OVER_FADE)
 
     // ---------------------------------------------------------------- scene
 
     private fun drawScene(canvas: Canvas, game: StackGame) {
         // Painter's algorithm: lower boxes first. Blocks are already ordered, so
-        // only the falling slices have to be merged back in by altitude.
+        // only the falling pieces have to be merged back in by altitude.
         var sliceIndex = 0
         val slices = sortedSlices
         slices.clear()
@@ -112,8 +127,7 @@ class GameRenderer(context: Context) {
             block.sx, block.sz,
             block.y, block.height * squash,
             Palette.blockColor(block.colorIndex),
-            255,
-            0f
+            255
         )
     }
 
@@ -125,16 +139,13 @@ class GameRenderer(context: Context) {
     }
 
     private fun drawSlice(canvas: Canvas, slice: FallingSlice) {
-        val alpha = (slice.alpha * 255f).toInt().coerceIn(0, 255)
-        if (alpha == 0) return
         drawBox(
             canvas,
             slice.cx, slice.cz,
             slice.sx, slice.sz,
             slice.y, slice.height,
             Palette.blockColor(slice.colorIndex),
-            alpha,
-            slice.rotation
+            alpha = 255
         )
     }
 
@@ -164,8 +175,12 @@ class GameRenderer(context: Context) {
     }
 
     /**
-     * Draws one cuboid. [rotation] spins the projected shape around its own
-     * centre, which is enough to sell a tumbling slice.
+     * Draws one cuboid.
+     *
+     * The faces are worked out for an upright box, so the projected shape must
+     * never be spun afterwards: rotating it in screen space left the three
+     * faces pointing the wrong way and turned a falling piece into a broken
+     * chevron that appeared to cut through the tower.
      */
     private fun drawBox(
         canvas: Canvas,
@@ -176,8 +191,7 @@ class GameRenderer(context: Context) {
         y: Float,
         boxHeight: Float,
         color: Int,
-        alpha: Int,
-        rotation: Float
+        alpha: Int
     ) {
         val x0 = cx - sx / 2f
         val x1 = cx + sx / 2f
@@ -195,12 +209,6 @@ class GameRenderer(context: Context) {
 
         if (cyp + drop < -CULL_MARGIN || ay > height + CULL_MARGIN) return
 
-        val rotating = rotation != 0f
-        if (rotating) {
-            canvas.save()
-            canvas.rotate(rotation, (ax + cxp) / 2f, (ay + cyp + drop) / 2f)
-        }
-
         // Face pointing towards +z, on the left of the screen and least lit.
         quad(canvas, dx, dy, cxp, cyp, cxp, cyp + drop, dx, dy + drop,
             Palette.shade(color, Palette.SHADE_LEFT), alpha)
@@ -209,8 +217,6 @@ class GameRenderer(context: Context) {
             Palette.shade(color, Palette.SHADE_RIGHT), alpha)
         // Lit top face.
         quad(canvas, ax, ay, bx, by, cxp, cyp, dx, dy, color, alpha)
-
-        if (rotating) canvas.restore()
     }
 
     private fun quad(
@@ -254,14 +260,6 @@ class GameRenderer(context: Context) {
         canvas.drawRect(0f, 0f, width, height, background)
     }
 
-    private fun drawHud(canvas: Canvas, game: StackGame) {
-        when (game.state) {
-            GameState.READY -> drawTitle(canvas, game)
-            GameState.RUNNING -> drawScore(canvas, game)
-            GameState.OVER -> drawGameOver(canvas, game)
-        }
-    }
-
     private fun drawScore(canvas: Canvas, game: StackGame) {
         text.letterSpacing = 0f
         text.textSize = width * 0.155f
@@ -274,29 +272,8 @@ class GameRenderer(context: Context) {
         )
     }
 
-    private fun drawTitle(canvas: Canvas, game: StackGame) {
-        text.letterSpacing = 0.28f
-        text.textSize = width * 0.135f
-        text.alpha = 245
-        canvas.drawText(labelTitle, width / 2f, height * 0.29f, text)
-
-        if (game.best > 0) {
-            text.letterSpacing = 0.16f
-            text.textSize = width * 0.042f
-            text.alpha = 150
-            canvas.drawText(
-                "$labelBest ${game.best}",
-                width / 2f,
-                height * 0.35f,
-                text
-            )
-        }
-
-        drawPulsingHint(canvas, labelStart, height * 0.43f)
-    }
-
     private fun drawGameOver(canvas: Canvas, game: StackGame) {
-        val fade = min(1f, game.timeSinceGameOver() / 0.45f)
+        val fade = gameOverFade(game)
         canvas.drawColor(Palette.withAlpha(Color.BLACK, (170f * fade).toInt()))
 
         text.letterSpacing = 0.22f

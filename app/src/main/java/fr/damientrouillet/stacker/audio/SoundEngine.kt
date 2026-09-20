@@ -45,6 +45,10 @@ class SoundEngine(context: Context) {
     @Volatile
     private var released = false
 
+    /** When false every playback call is a no-op, so the game runs silently. */
+    @Volatile
+    var enabled: Boolean = true
+
     private val appContext = context.applicationContext
 
     init {
@@ -74,11 +78,13 @@ class SoundEngine(context: Context) {
 
     /** Plays the blip for a placement. [step] is the current perfect streak. */
     fun playPlace(step: Int) {
+        if (!enabled) return
         val id = toneIds[step.coerceIn(0, TONE_COUNT - 1)]
         if (id != 0) pool.play(id, 0.85f, 0.85f, 1, 0, 1f)
     }
 
     fun playGameOver() {
+        if (!enabled) return
         if (failId != 0) pool.play(failId, 0.9f, 0.9f, 1, 0, 1f)
     }
 

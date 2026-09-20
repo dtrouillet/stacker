@@ -8,9 +8,11 @@ dépasse est tranché et tombe. Plus la tour monte, plus les plaques rétréciss
 et vont vite.
 
 <p align="center">
-  <img src="docs/screenshots/01-title.png" width="240" alt="Écran titre">
-  <img src="docs/screenshots/02-playing.png" width="240" alt="Partie en cours">
-  <img src="docs/screenshots/03-gameover.png" width="240" alt="Fin de partie">
+  <img src="docs/screenshots/01-title.png" width="190" alt="Écran titre">
+  <img src="docs/screenshots/02-settings.png" width="190" alt="Paramètres">
+  <img src="docs/screenshots/03-leaderboard.png" width="190" alt="Classement">
+  <img src="docs/screenshots/04-playing.png" width="190" alt="Partie en cours">
+  <img src="docs/screenshots/05-gameover.png" width="190" alt="Fin de partie">
 </p>
 
 ## Le jeu
@@ -22,14 +24,30 @@ et vont vite.
 - Une pose décalée tranche le débord, qui tombe en tournoyant. Une pose alignée
   au pixel près est un *perfect* : la taille est conservée, un anneau blanc
   s'échappe du bloc, et la note jouée monte d'un cran.
-- Après six *perfects* d'affilée, les plaques regrossissent, sans jamais
-  dépasser la taille d'origine.
+- Après six *perfects* d'affilée les plaques regrossissent, et à partir de huit
+  elles regrossissent nettement plus vite, sans jamais dépasser la taille de
+  départ.
+- La vitesse monte doucement sur la durée, mais une ondulation la fait
+  régulièrement redescendre pendant quelques plaques, au lieu de grimper sans
+  répit.
 - Les couleurs défilent en continu dans le cercle chromatique, et le dégradé du
   fond suit la teinte du bloc en cours.
 - La caméra s'élève en douceur pour garder le sommet de la tour à hauteur fixe.
-- Le meilleur score est conservé entre les parties.
 - Les bruitages sont synthétisés au lancement puis mis en cache : aucun fichier
   audio n'est embarqué.
+
+## Écrans et options
+
+L'écran titre ouvre sur trois choix : jouer, paramètres, classement. Le retour
+système revient au titre avant de fermer le jeu, et la fin de partie propose un
+bouton pour y retourner.
+
+Les paramètres permettent de couper le son et de régler la taille de plaque de
+départ, de 60 % à 140 % par pas de 20 %. Une plaque plus petite rend la partie
+plus exigeante, et le socle affiché derrière le menu change de taille aussitôt.
+
+Le classement garde les dix meilleurs scores, du plus élevé au plus faible, une
+égalité étant tranchée en faveur de la partie la plus ancienne.
 
 ## Construire
 
@@ -83,24 +101,29 @@ déclarer, est dans [docs/RELEASING.md](docs/RELEASING.md).
 
 | Dossier | Rôle |
 |---|---|
-| `game/` | Simulation pure, sans dépendance Android : blocs, découpe, combos, caméra, palette, projection isométrique |
-| `render/` | Dessin de la scène et de l'interface sur un `Canvas` |
-| `view/` | `SurfaceView` et boucle de jeu sur un thread dédié |
+| `game/` | Simulation pure, sans dépendance Android : blocs, découpe, combos, vitesse, caméra, palette, projection isométrique, options, classement |
+| `ui/` | Géométrie des menus et détection des appuis, pure elle aussi |
+| `render/` | Dessin de la scène, du score et des pages de menu sur un `Canvas` |
+| `view/` | `SurfaceView`, boucle de jeu sur un thread dédié, navigation entre écrans |
 | `audio/` | Synthèse des bruitages et lecture via `SoundPool` |
-| `data/` | Persistance du meilleur score |
+| `data/` | Persistance des options et du classement |
 
-Le paquet `game` ne dépend que de la bibliothèque standard Kotlin, donc toute la
-mécanique du jeu est testée sur la JVM dans `app/src/test`.
+Les paquets `game` et `ui` ne dépendent que de la bibliothèque standard Kotlin,
+donc la mécanique du jeu comme le placement des boutons sont testés sur la JVM
+dans `app/src/test`.
 
 ## Réglages
 
 Tous les paramètres de gameplay sont regroupés dans `GameConfig` : vitesse de
-départ et accélération, tolérance du *perfect*, seuil et pas de regrossissement,
-hauteur des plaques, amplitude du va-et-vient, gravité. La géométrie de la vue
+départ, pente et ondulation de la courbe de vitesse, tolérance du *perfect*,
+les deux seuils de regrossissement et leurs pas, hauteur des plaques, amplitude
+du va-et-vient, gravité. Les deux règles qui en découlent, `speedFor` et
+`growthFor`, vivent au même endroit et sont testées directement. La géométrie de la vue
 vit dans `IsoProjection` : largeur de la tour à l'écran et hauteur de la ligne
 d'horizon.
 
 ## Captures
 
-Les images ci-dessus sont rendues hors ligne à partir du code de géométrie du
-jeu (`IsoProjection`, `Palette` et `StackGame`), pas capturées sur un appareil.
+Les images ci-dessus sont rendues hors ligne à partir du code du jeu lui-même
+(`IsoProjection`, `Palette`, `StackGame` et `MenuLayout`), pas capturées sur un
+appareil. Le placement des boutons y est donc celui de l'application.
