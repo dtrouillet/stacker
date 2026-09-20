@@ -15,7 +15,6 @@ class FallingSlice(
 ) {
     var velocityY: Float = 0f
     var rotation: Float = 0f
-    var alpha: Float = 1f
 
     fun update(dt: Float) {
         velocityY -= GameConfig.GRAVITY * dt
@@ -23,6 +22,5 @@ class FallingSlice(
         cx += driftX * dt
         cz += driftZ * dt
         rotation += spin * dt
-        alpha = (alpha - dt * 0.55f).coerceAtLeast(0f)
     }
 }

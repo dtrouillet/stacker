@@ -253,7 +253,7 @@ class StackGame(
         while (i >= 0) {
             val slice = slices[i]
             slice.update(dt)
-            if (slice.y < cameraY - GameConfig.SLICE_CULL_DEPTH || slice.alpha <= 0f) {
+            if (slice.y < cameraY - GameConfig.SLICE_CULL_DEPTH) {
                 slices.removeAt(i)
             }
             i--

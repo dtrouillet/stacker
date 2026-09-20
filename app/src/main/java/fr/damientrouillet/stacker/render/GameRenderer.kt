@@ -98,7 +98,7 @@ class GameRenderer(context: Context) {
 
     private fun drawScene(canvas: Canvas, game: StackGame) {
         // Painter's algorithm: lower boxes first. Blocks are already ordered, so
-        // only the falling slices have to be merged back in by altitude.
+        // only the falling pieces have to be merged back in by altitude.
         var sliceIndex = 0
         val slices = sortedSlices
         slices.clear()
@@ -140,16 +140,14 @@ class GameRenderer(context: Context) {
     }
 
     private fun drawSlice(canvas: Canvas, slice: FallingSlice) {
-        val alpha = (slice.alpha * 255f).toInt().coerceIn(0, 255)
-        if (alpha == 0) return
         drawBox(
             canvas,
             slice.cx, slice.cz,
             slice.sx, slice.sz,
             slice.y, slice.height,
             Palette.blockColor(slice.colorIndex),
-            alpha,
-            slice.rotation
+            alpha = 255,
+            rotation = slice.rotation
         )
     }
 
