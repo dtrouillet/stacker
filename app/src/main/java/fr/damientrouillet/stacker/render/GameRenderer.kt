@@ -127,8 +127,7 @@ class GameRenderer(context: Context) {
             block.sx, block.sz,
             block.y, block.height * squash,
             Palette.blockColor(block.colorIndex),
-            255,
-            0f
+            255
         )
     }
 
@@ -146,8 +145,7 @@ class GameRenderer(context: Context) {
             slice.sx, slice.sz,
             slice.y, slice.height,
             Palette.blockColor(slice.colorIndex),
-            alpha = 255,
-            rotation = slice.rotation
+            alpha = 255
         )
     }
 
@@ -177,8 +175,12 @@ class GameRenderer(context: Context) {
     }
 
     /**
-     * Draws one cuboid. [rotation] spins the projected shape around its own
-     * centre, which is enough to sell a tumbling slice.
+     * Draws one cuboid.
+     *
+     * The faces are worked out for an upright box, so the projected shape must
+     * never be spun afterwards: rotating it in screen space left the three
+     * faces pointing the wrong way and turned a falling piece into a broken
+     * chevron that appeared to cut through the tower.
      */
     private fun drawBox(
         canvas: Canvas,
@@ -189,8 +191,7 @@ class GameRenderer(context: Context) {
         y: Float,
         boxHeight: Float,
         color: Int,
-        alpha: Int,
-        rotation: Float
+        alpha: Int
     ) {
         val x0 = cx - sx / 2f
         val x1 = cx + sx / 2f
@@ -208,12 +209,6 @@ class GameRenderer(context: Context) {
 
         if (cyp + drop < -CULL_MARGIN || ay > height + CULL_MARGIN) return
 
-        val rotating = rotation != 0f
-        if (rotating) {
-            canvas.save()
-            canvas.rotate(rotation, (ax + cxp) / 2f, (ay + cyp + drop) / 2f)
-        }
-
         // Face pointing towards +z, on the left of the screen and least lit.
         quad(canvas, dx, dy, cxp, cyp, cxp, cyp + drop, dx, dy + drop,
             Palette.shade(color, Palette.SHADE_LEFT), alpha)
@@ -222,8 +217,6 @@ class GameRenderer(context: Context) {
             Palette.shade(color, Palette.SHADE_RIGHT), alpha)
         // Lit top face.
         quad(canvas, ax, ay, bx, by, cxp, cyp, dx, dy, color, alpha)
-
-        if (rotating) canvas.restore()
     }
 
     private fun quad(

@@ -3,7 +3,6 @@ package fr.damientrouillet.stacker.game
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.min
-import kotlin.random.Random
 
 /**
  * The whole game simulation. Deliberately free of any Android dependency so it
@@ -12,10 +11,7 @@ import kotlin.random.Random
  * Coordinates: x and z span the horizontal plane, y points up. The tower grows
  * along +y and the block currently in play slides along [movingAxis].
  */
-class StackGame(
-    settings: GameSettings = GameSettings(),
-    private val random: Random = Random.Default
-) {
+class StackGame(settings: GameSettings = GameSettings()) {
 
     /** Callbacks used by the view layer to trigger sound and haptics. */
     interface Listener {
@@ -200,8 +196,7 @@ class StackGame(
                 height = current.height,
                 colorIndex = current.colorIndex,
                 driftX = if (onX) sign * 0.45f else 0f,
-                driftZ = if (onX) 0f else sign * 0.45f,
-                spin = (random.nextFloat() * 80f + 40f) * sign
+                driftZ = if (onX) 0f else sign * 0.45f
             )
         )
     }
@@ -218,8 +213,7 @@ class StackGame(
                 height = current.height,
                 colorIndex = current.colorIndex,
                 driftX = if (onX) sign * 0.5f else 0f,
-                driftZ = if (onX) 0f else sign * 0.5f,
-                spin = (random.nextFloat() * 70f + 50f) * sign
+                driftZ = if (onX) 0f else sign * 0.5f
             )
         )
         moving = null

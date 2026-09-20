@@ -10,17 +10,14 @@ class FallingSlice(
     val height: Float,
     val colorIndex: Int,
     private val driftX: Float,
-    private val driftZ: Float,
-    val spin: Float
+    private val driftZ: Float
 ) {
     var velocityY: Float = 0f
-    var rotation: Float = 0f
 
     fun update(dt: Float) {
         velocityY -= GameConfig.GRAVITY * dt
         y += velocityY * dt
         cx += driftX * dt
         cz += driftZ * dt
-        rotation += spin * dt
     }
 }
