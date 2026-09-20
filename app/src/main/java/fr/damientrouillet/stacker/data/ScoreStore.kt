@@ -1,6 +1,7 @@
 package fr.damientrouillet.stacker.data
 
 import android.content.Context
+import androidx.core.content.edit
 import fr.damientrouillet.stacker.game.GameSettings
 import fr.damientrouillet.stacker.game.Leaderboard
 
@@ -12,7 +13,7 @@ class ScoreStore(context: Context) {
 
     var leaderboard: Leaderboard
         get() = Leaderboard.decode(prefs.getString(KEY_LEADERBOARD, null))
-        set(value) = prefs.edit().putString(KEY_LEADERBOARD, value.encode()).apply()
+        set(value) = prefs.edit { putString(KEY_LEADERBOARD, value.encode()) }
 
     var settings: GameSettings
         get() = GameSettings(
@@ -21,10 +22,10 @@ class ScoreStore(context: Context) {
                 prefs.getFloat(KEY_BASE_SIZE, GameSettings().baseSize)
             )
         )
-        set(value) = prefs.edit()
-            .putBoolean(KEY_SOUND, value.soundEnabled)
-            .putFloat(KEY_BASE_SIZE, value.baseSize)
-            .apply()
+        set(value) = prefs.edit {
+            putBoolean(KEY_SOUND, value.soundEnabled)
+            putFloat(KEY_BASE_SIZE, value.baseSize)
+        }
 
     /**
      * The best score. Older versions stored it on its own, so it is read back
