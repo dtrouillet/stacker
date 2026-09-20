@@ -33,7 +33,7 @@ class StackGameTest {
         assertEquals(1, game.blocks.size)
         assertEquals(0, game.score)
         assertNull(game.moving)
-        assertEquals(GameConfig.BASE_SIZE, game.blocks.first().sx, epsilon)
+        assertEquals(GameConfig.DEFAULT_BASE_SIZE, game.blocks.first().sx, epsilon)
         assertEquals(0f, game.towerTop(), epsilon)
     }
 
@@ -43,7 +43,7 @@ class StackGameTest {
         assertEquals(GameState.RUNNING, game.state)
         val moving = game.moving
         assertNotNull(moving)
-        assertEquals(GameConfig.BASE_SIZE, moving!!.sx, epsilon)
+        assertEquals(GameConfig.DEFAULT_BASE_SIZE, moving!!.sx, epsilon)
         assertEquals(0f, moving.y, epsilon)
         assertEquals(Axis.X, game.movingAxis)
     }
@@ -68,7 +68,7 @@ class StackGameTest {
         assertTrue(game.slices.isEmpty())
         assertEquals(1, game.rings.size)
         val placed = game.blocks.last()
-        assertEquals(GameConfig.BASE_SIZE, placed.sx, epsilon)
+        assertEquals(GameConfig.DEFAULT_BASE_SIZE, placed.sx, epsilon)
         assertEquals(0f, placed.cx, epsilon)
         assertEquals(GameConfig.BLOCK_HEIGHT, game.towerTop(), epsilon)
     }
@@ -80,7 +80,7 @@ class StackGameTest {
         placeOffset(game, delta)
 
         val placed = game.blocks.last()
-        assertEquals(GameConfig.BASE_SIZE - delta, placed.sx, epsilon)
+        assertEquals(GameConfig.DEFAULT_BASE_SIZE - delta, placed.sx, epsilon)
         assertEquals(delta / 2f, placed.cx, epsilon)
         assertEquals(0, game.combo)
 
@@ -99,7 +99,7 @@ class StackGameTest {
         placeOffset(game, delta)
 
         val placed = game.blocks.last()
-        assertEquals(GameConfig.BASE_SIZE - abs(delta), placed.sx, epsilon)
+        assertEquals(GameConfig.DEFAULT_BASE_SIZE - abs(delta), placed.sx, epsilon)
         assertEquals(delta / 2f, placed.cx, epsilon)
         val slice = game.slices.first()
         assertEquals(abs(delta), slice.sx, epsilon)
@@ -111,8 +111,8 @@ class StackGameTest {
         val game = startedGame()
         placeOffset(game, 0.4f)
         val placed = game.blocks.last()
-        assertEquals(GameConfig.BASE_SIZE - 0.4f, placed.sx, epsilon)
-        assertEquals(GameConfig.BASE_SIZE, placed.sz, epsilon)
+        assertEquals(GameConfig.DEFAULT_BASE_SIZE - 0.4f, placed.sx, epsilon)
+        assertEquals(GameConfig.DEFAULT_BASE_SIZE, placed.sz, epsilon)
     }
 
     @Test
@@ -131,7 +131,7 @@ class StackGameTest {
     @Test
     fun `an overlap thinner than the minimum counts as a miss`() {
         val game = startedGame()
-        placeOffset(game, GameConfig.BASE_SIZE - GameConfig.MIN_SIZE / 2f)
+        placeOffset(game, GameConfig.DEFAULT_BASE_SIZE - GameConfig.MIN_SIZE / 2f)
         assertEquals(GameState.OVER, game.state)
     }
 
@@ -175,14 +175,14 @@ class StackGameTest {
         val game = startedGame()
         placeOffset(game, 0.3f)
         val shrunk = game.blocks.last().sx
-        assertEquals(GameConfig.BASE_SIZE - 0.3f, shrunk, epsilon)
+        assertEquals(GameConfig.DEFAULT_BASE_SIZE - 0.3f, shrunk, epsilon)
 
         // Perfect placements on the Z axis do not touch the X size, so the X
         // size only moves on every other placement.
         repeat(GameConfig.COMBO_GROW_AT * 2) { placePerfect(game) }
         val grown = game.blocks.last().sx
         assertTrue("expected the block to grow back, was $shrunk then $grown", grown > shrunk)
-        assertTrue(grown <= GameConfig.BASE_SIZE + epsilon)
+        assertTrue(grown <= GameConfig.DEFAULT_BASE_SIZE + epsilon)
     }
 
     @Test
@@ -190,15 +190,15 @@ class StackGameTest {
         val game = startedGame()
         repeat(40) { placePerfect(game) }
         for (block in game.blocks) {
-            assertTrue(block.sx <= GameConfig.BASE_SIZE + epsilon)
-            assertTrue(block.sz <= GameConfig.BASE_SIZE + epsilon)
+            assertTrue(block.sx <= GameConfig.DEFAULT_BASE_SIZE + epsilon)
+            assertTrue(block.sz <= GameConfig.DEFAULT_BASE_SIZE + epsilon)
         }
     }
 
     @Test
     fun `the block oscillates around the tower without escaping its travel range`() {
         val game = startedGame()
-        val travel = GameConfig.BASE_SIZE * 0.5f + GameConfig.TRAVEL_MARGIN
+        val travel = GameConfig.DEFAULT_BASE_SIZE * 0.5f + GameConfig.TRAVEL_MARGIN
         var minimum = Float.MAX_VALUE
         var maximum = -Float.MAX_VALUE
         repeat(2000) {
@@ -215,14 +215,58 @@ class StackGameTest {
     }
 
     @Test
-    fun `the speed ramps up with the score and then caps`() {
+    fun `the speed follows the curve for the current score`() {
         val game = startedGame()
-        val initial = game.currentSpeed()
-        assertEquals(GameConfig.START_SPEED, initial, epsilon)
-        repeat(30) { placePerfect(game) }
-        assertTrue(game.currentSpeed() > initial)
+        assertEquals(GameConfig.speedFor(0), game.currentSpeed(), epsilon)
+        repeat(7) { placePerfect(game) }
+        assertEquals(GameConfig.speedFor(7), game.currentSpeed(), epsilon)
         repeat(200) { placePerfect(game) }
         assertEquals(GameConfig.MAX_SPEED, game.currentSpeed(), epsilon)
+    }
+
+    @Test
+    fun `a streak of eight grows the plate faster than a streak of six`() {
+        val game = startedGame()
+        // Shrink hard first, so the growth has room and never meets the cap.
+        placeOffset(game, 0.5f)
+        var previous = game.blocks.last().sx
+        val growthByCombo = HashMap<Int, Float>()
+        repeat(10) {
+            placePerfect(game)
+            val current = game.blocks.last().sx
+            growthByCombo[game.combo] = current - previous
+            previous = current
+        }
+
+        // Only every other placement travels on the x axis, so only those grow.
+        assertEquals(0f, growthByCombo.getValue(4), epsilon)
+        assertEquals(GameConfig.GROW_AMOUNT, growthByCombo.getValue(6), epsilon)
+        assertEquals(GameConfig.BIG_GROW_AMOUNT, growthByCombo.getValue(8), epsilon)
+        assertTrue(growthByCombo.getValue(8) > growthByCombo.getValue(6))
+        assertTrue(game.blocks.last().sx < GameConfig.DEFAULT_BASE_SIZE)
+    }
+
+    @Test
+    fun `a smaller configured plate makes the whole tower smaller`() {
+        val game = StackGame(GameSettings(baseSize = 0.6f)).apply { tap() }
+        assertEquals(0.6f, game.baseSize, epsilon)
+        assertEquals(0.6f, game.blocks.first().sx, epsilon)
+        assertEquals(0.6f, game.moving!!.sx, epsilon)
+        repeat(30) { placePerfect(game) }
+        for (block in game.blocks) {
+            assertTrue(block.sx <= 0.6f + epsilon)
+            assertTrue(block.sz <= 0.6f + epsilon)
+        }
+    }
+
+    @Test
+    fun `settings only take effect on the next game`() {
+        val game = startedGame()
+        assertEquals(GameConfig.DEFAULT_BASE_SIZE, game.baseSize, epsilon)
+        game.settings = GameSettings(baseSize = 0.8f)
+        assertEquals(GameConfig.DEFAULT_BASE_SIZE, game.baseSize, epsilon)
+        game.reset()
+        assertEquals(0.8f, game.baseSize, epsilon)
     }
 
     @Test
@@ -273,8 +317,8 @@ class StackGameTest {
         val game = startedGame()
         repeat(60) { placeOffset(game, 0.01f) }
         for (block in game.blocks) {
-            assertTrue(abs(block.cx) + block.sx / 2f <= GameConfig.BASE_SIZE / 2f + epsilon)
-            assertTrue(abs(block.cz) + block.sz / 2f <= GameConfig.BASE_SIZE / 2f + epsilon)
+            assertTrue(abs(block.cx) + block.sx / 2f <= GameConfig.DEFAULT_BASE_SIZE / 2f + epsilon)
+            assertTrue(abs(block.cz) + block.sz / 2f <= GameConfig.DEFAULT_BASE_SIZE / 2f + epsilon)
         }
     }
 }

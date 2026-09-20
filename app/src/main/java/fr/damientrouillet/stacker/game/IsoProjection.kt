@@ -30,7 +30,7 @@ class IsoProjection {
 
     fun configure(width: Float, height: Float) {
         // A block of BASE_SIZE spans 2 * cos(30) * size horizontally once projected.
-        scale = width * TOWER_WIDTH_RATIO / (2f * COS30 * GameConfig.BASE_SIZE)
+        scale = width * TOWER_WIDTH_RATIO / (2f * COS30 * GameConfig.DEFAULT_BASE_SIZE)
         originX = width / 2f
         originY = height * ANCHOR
     }

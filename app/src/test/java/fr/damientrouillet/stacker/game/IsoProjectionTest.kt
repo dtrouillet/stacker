@@ -23,7 +23,7 @@ class IsoProjectionTest {
     @Test
     fun `a base sized block spans the configured fraction of the width`() {
         val p = projection()
-        val half = GameConfig.BASE_SIZE / 2f
+        val half = GameConfig.DEFAULT_BASE_SIZE / 2f
         val left = p.x(-half, half)
         val right = p.x(half, -half)
         assertEquals(1080f * IsoProjection.TOWER_WIDTH_RATIO, right - left, epsilon)
@@ -32,7 +32,7 @@ class IsoProjectionTest {
     @Test
     fun `the top face is a diamond twice as wide as it is tall`() {
         val p = projection()
-        val half = GameConfig.BASE_SIZE / 2f
+        val half = GameConfig.DEFAULT_BASE_SIZE / 2f
         val width = p.x(half, -half) - p.x(-half, half)
         val height = p.y(half, half, 0f) - p.y(-half, -half, 0f)
         // cos(30) / sin(30) = sqrt(3), the signature ratio of an isometric view.

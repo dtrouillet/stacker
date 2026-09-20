@@ -12,7 +12,10 @@ import kotlin.random.Random
  * Coordinates: x and z span the horizontal plane, y points up. The tower grows
  * along +y and the block currently in play slides along [movingAxis].
  */
-class StackGame(private val random: Random = Random.Default) {
+class StackGame(
+    settings: GameSettings = GameSettings(),
+    private val random: Random = Random.Default
+) {
 
     /** Callbacks used by the view layer to trigger sound and haptics. */
     interface Listener {
@@ -20,6 +23,12 @@ class StackGame(private val random: Random = Random.Default) {
         fun onPlaced(perfect: Boolean, comboStep: Int)
         fun onGameOver(score: Int, newBest: Boolean)
     }
+
+    /**
+     * Options for the next game. Changing them mid-game is harmless: the new
+     * values take effect on the next [reset].
+     */
+    var settings: GameSettings = settings
 
     val blocks = ArrayList<Block>()
     val slices = ArrayList<FallingSlice>()
@@ -51,6 +60,10 @@ class StackGame(private val random: Random = Random.Default) {
     /** Colour index of the block currently in play, used to tint the background. */
     val colorIndex: Int get() = moving?.colorIndex ?: blocks.size
 
+    /** Plate size this game started with, captured at [reset]. */
+    var baseSize: Float = settings.baseSize
+        private set
+
     private var direction = 1
     private var overTimer = 0f
 
@@ -70,12 +83,13 @@ class StackGame(private val random: Random = Random.Default) {
         moving = null
         movingAxis = Axis.Z
         state = GameState.READY
+        baseSize = settings.baseSize
         blocks.add(
             Block(
                 cx = 0f,
                 cz = 0f,
-                sx = GameConfig.BASE_SIZE,
-                sz = GameConfig.BASE_SIZE,
+                sx = baseSize,
+                sz = baseSize,
                 y = -GameConfig.PEDESTAL_HEIGHT,
                 height = GameConfig.PEDESTAL_HEIGHT,
                 colorIndex = 0
@@ -131,8 +145,7 @@ class StackGame(private val random: Random = Random.Default) {
         block.setCenter(movingAxis, center)
     }
 
-    fun currentSpeed(): Float =
-        min(GameConfig.MAX_SPEED, GameConfig.START_SPEED + score * GameConfig.SPEED_PER_BLOCK)
+    fun currentSpeed(): Float = GameConfig.speedFor(score)
 
     private fun place() {
         val current = moving ?: return
@@ -151,11 +164,7 @@ class StackGame(private val random: Random = Random.Default) {
 
         if (spread <= GameConfig.PERFECT_TOLERANCE) {
             combo++
-            val grown = if (combo >= GameConfig.COMBO_GROW_AT) {
-                min(GameConfig.BASE_SIZE, previousSize + GameConfig.GROW_AMOUNT)
-            } else {
-                previousSize
-            }
+            val grown = min(baseSize, previousSize + GameConfig.growthFor(combo))
             current.setCenter(axis, previous.center(axis))
             current.setSize(axis, grown)
             rings.add(PerfectRing(current.cx, current.cz, current.sx, current.sz, current.top))

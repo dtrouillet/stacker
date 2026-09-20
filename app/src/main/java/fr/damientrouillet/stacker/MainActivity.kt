@@ -3,6 +3,7 @@ package fr.damientrouillet.stacker
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -20,6 +21,15 @@ class MainActivity : ComponentActivity() {
         gameView = GameView(this)
         setContentView(gameView)
         hideSystemBars()
+
+        // Back steps out of a menu page first, and only then closes the game.
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (gameView.goBack()) return
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        })
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
